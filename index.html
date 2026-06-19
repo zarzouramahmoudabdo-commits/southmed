@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>الثوابت المساحية</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1923;
+    --surface: #162231;
+    --surface2: #1e2f42;
+    --border: #2a3f58;
+    --accent: #f0a500;
+    --accent2: #00bfae;
+    --text: #e8edf2;
+    --muted: #7a8fa3;
+    --danger: #e05555;
+    --success: #3dc97e;
+    --font-main: 'Segoe UI', Tahoma, Arial, sans-serif;
+    --radius: 10px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-main);
+    min-height: 100vh;
+  }
+
+  /* ─── Header ─── */
+  header {
+    background: var(--surface);
+    border-bottom: 2px solid var(--accent);
+    padding: 12px 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  header .icon { font-size: 1.5rem; flex-shrink:0; }
+  header h1 { font-size: 1.1rem; font-weight: 700; color: var(--accent); flex-shrink:0; }
+  header .count {
+    background: var(--accent); color: #000; font-weight: 700;
+    font-size: 0.78rem; padding: 3px 9px; border-radius: 20px; flex-shrink:0;
+  }
+  .header-right { margin-right: auto; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .hbtn {
+    background: var(--surface2); border: 1.5px solid var(--border); color: var(--text);
+    border-radius: 8px; padding: 6px 10px; font-size: 0.75rem; font-family: var(--font-main);
+    cursor: pointer; white-space: nowrap; transition: all 0.2s;
+  }
+  .hbtn:hover { border-color: var(--accent2); color: var(--accent2); }
+  .hbtn.primary { background: var(--accent); color: #000; font-weight: 700; border-color: var(--accent); }
+  .hbtn.primary:hover { opacity:0.85; color:#000; }
+  .hbtn.danger { border-color: var(--danger); color: var(--danger); }
+  .hbtn.danger:hover { background: var(--danger); color:#fff; }
+  .sync-status { font-size: 0.7rem; color: var(--muted); display:flex; align-items:center; gap:4px; }
+  .sync-dot { width:7px; height:7px; border-radius:50%; background:var(--muted); }
+  .sync-dot.ok { background: var(--success); animation: pulse 2s infinite; }
+  .sync-dot.err { background: var(--danger); }
+  .sync-dot.busy { background: var(--accent); animation: pulse 0.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* ─── Search ─── */
+  .search-bar {
+    padding: 10px 16px; background: var(--surface);
+    border-bottom: 1px solid var(--border); display: flex; gap: 8px; align-items:center;
+  }
+  .search-bar input {
+    flex:1; background: var(--bg); border: 1.5px solid var(--border);
+    border-radius: var(--radius); color: var(--text); font-size: 1rem;
+    padding: 9px 14px; font-family: var(--font-main); outline: none; direction:rtl;
+    transition: border-color 0.2s;
+  }
+  .search-bar input:focus { border-color: var(--accent); }
+  .search-bar input::placeholder { color: var(--muted); }
+  .search-bar select {
+    background: var(--bg); border: 1.5px solid var(--border);
+    border-radius: var(--radius); color: var(--text); font-size: 0.85rem;
+    padding: 9px 8px; font-family: var(--font-main); outline:none; cursor:pointer;
+  }
+  .search-bar select:focus { border-color: var(--accent); }
+
+  /* ─── Stats ─── */
+  .stats {
+    display:flex; background: var(--surface2);
+    border-bottom: 1px solid var(--border); overflow-x:auto; scrollbar-width:none;
+  }
+  .stat { flex:1; min-width:80px; text-align:center; padding:8px 4px; border-left:1px solid var(--border); }
+  .stat:last-child { border-left:none; }
+  .stat .val { font-size:1.1rem; font-weight:700; color:var(--accent); }
+  .stat .lbl { font-size:0.65rem; color:var(--muted); margin-top:2px; }
+
+  /* ─── List ─── */
+  #list { padding: 10px 12px 20px; display:flex; flex-direction:column; gap:8px; }
+
+  .point-card {
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: var(--radius); overflow:hidden; transition: border-color 0.2s;
+  }
+  .point-card:hover { border-color: var(--accent2); }
+  .point-card.editing { border-color: var(--accent); }
+
+  .card-head { display:flex; align-items:center; padding:10px 12px; gap:10px; cursor:pointer; user-select:none; }
+  .card-num {
+    background: var(--bg); border: 1.5px solid var(--border);
+    border-radius:6px; font-size:0.78rem; font-weight:700; color:var(--accent);
+    min-width:34px; text-align:center; padding:2px 5px; flex-shrink:0;
+  }
+  .card-desc { flex:1; font-size:0.91rem; color:var(--text); line-height:1.4; }
+  .villa-tag {
+    display:inline-block; background: var(--accent2); color:#000;
+    font-size:0.68rem; font-weight:700; padding:1px 7px; border-radius:20px; margin-right:6px;
+  }
+  .card-actions { display:flex; gap:6px; flex-shrink:0; }
+  .btn-icon {
+    background: var(--surface2); border: 1.5px solid var(--border); color: var(--muted);
+    border-radius:7px; padding:5px 9px; font-size:0.95rem; cursor:pointer;
+    transition:all 0.2s; line-height:1;
+  }
+  .btn-icon:hover { background: var(--border); color: var(--text); }
+  .btn-icon.edit:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-icon.del:hover { border-color: var(--danger); color: var(--danger); }
+
+  .card-coords { padding:0 12px 10px; display:flex; gap:8px; flex-wrap:wrap; }
+  .coord-chip {
+    background: var(--bg); border:1px solid var(--border); border-radius:6px;
+    padding:4px 10px; font-size:0.78rem; color:var(--muted); font-family:monospace;
+    display:flex; align-items:center; gap:4px; cursor:pointer; transition: border-color 0.2s;
+  }
+  .coord-chip:hover { border-color: var(--accent2); }
+  .coord-chip span { color: var(--accent2); font-weight:700; margin-left:4px; }
+
+  /* ─── Edit form ─── */
+  .edit-form {
+    display:none; background: var(--bg); padding:12px;
+    border-top:1px solid var(--border); gap:10px; flex-direction:column;
+  }
+  .edit-form.open { display:flex; }
+  .edit-row { display:flex; gap:8px; align-items:center; }
+  .edit-row label { font-size:0.77rem; color:var(--muted); min-width:50px; text-align:right; }
+  .edit-row input {
+    flex:1; background: var(--surface); border:1.5px solid var(--border);
+    border-radius:7px; color:var(--text); font-size:0.9rem; padding:8px 10px;
+    font-family:var(--font-main); outline:none; direction:rtl;
+  }
+  .edit-row input:focus { border-color: var(--accent); }
+  .edit-btns { display:flex; gap:8px; justify-content:flex-end; }
+  .btn {
+    padding:8px 18px; border-radius:7px; font-size:0.87rem; font-weight:600;
+    cursor:pointer; border:none; font-family:var(--font-main); transition:opacity 0.2s;
+  }
+  .btn:hover { opacity:0.85; }
+  .btn-save { background: var(--accent); color:#000; }
+  .btn-cancel { background: var(--surface2); color:var(--muted); }
+
+  /* ─── Add section ─── */
+  .add-section {
+    padding:12px; background: var(--surface);
+    border-top:2px solid var(--border); position:sticky; bottom:0;
+  }
+  .add-toggle {
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    background: var(--accent); color:#000; font-weight:700; font-size:0.93rem;
+    padding:11px; border-radius:var(--radius); cursor:pointer; border:none;
+    width:100%; font-family:var(--font-main); transition:opacity 0.2s;
+  }
+  .add-toggle:hover { opacity:0.88; }
+  .add-form { display:none; flex-direction:column; gap:10px; margin-top:12px; }
+  .add-form.open { display:flex; }
+
+  /* ─── Empty ─── */
+  .empty { text-align:center; padding:40px 20px; color:var(--muted); font-size:0.93rem; }
+  .empty .em-icon { font-size:2.5rem; margin-bottom:10px; }
+
+  /* ─── Toast ─── */
+  #toast {
+    position:fixed; bottom:90px; left:50%;
+    transform:translateX(-50%) translateY(20px);
+    background: var(--success); color:#000; font-weight:700;
+    font-size:0.88rem; padding:10px 22px; border-radius:20px;
+    opacity:0; pointer-events:none; transition:all 0.3s; z-index:999; white-space:nowrap;
+  }
+  #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+  #toast.err { background: var(--danger); color:#fff; }
+
+  /* ─── Overlays ─── */
+  .overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,0.75);
+    display:flex; align-items:center; justify-content:center;
+    z-index:500; padding:16px;
+  }
+  .overlay.hidden { display:none; }
+  .modal {
+    background: var(--surface); border:1.5px solid var(--border);
+    border-radius: 14px; padding:24px; width:100%; max-width:380px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+  .modal h2 { font-size:1.1rem; color:var(--accent); margin-bottom:16px; text-align:center; }
+  .modal .field { display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
+  .modal label { font-size:0.78rem; color:var(--muted); }
+  .modal input {
+    background: var(--bg); border:1.5px solid var(--border); border-radius:8px;
+    color:var(--text); font-size:0.95rem; padding:10px 12px; font-family:var(--font-main);
+    outline:none; direction:ltr; width:100%;
+  }
+  .modal input:focus { border-color:var(--accent); }
+  .modal .m-btns { display:flex; gap:8px; justify-content:flex-end; margin-top:8px; }
+  .modal .m-note { font-size:0.75rem; color:var(--muted); margin-top:10px; text-align:center; }
+  .modal hr { border:none; border-top:1px solid var(--border); margin:16px 0; }
+  .modal .section-title { font-size:0.82rem; color:var(--accent2); font-weight:700; margin-bottom:10px; }
+
+  /* ─── Lock badge ─── */
+  .lock-badge {
+    background: var(--success); color:#000; font-size:0.7rem; font-weight:700;
+    padding:2px 8px; border-radius:10px; display:inline-flex; align-items:center; gap:4px;
+  }
+  .lock-badge.locked { background: var(--danger); color:#fff; }
+
+  /* ─── Sheets config box ─── */
+  .sheets-box {
+    background: var(--bg); border:1px solid var(--border); border-radius:8px;
+    padding:12px; margin-top:4px;
+  }
+  .sheets-box input {
+    font-size:0.8rem; padding:7px 10px; margin-bottom:8px;
+  }
+  .sheets-box .hint { font-size:0.7rem; color:var(--muted); margin-bottom:8px; line-height:1.5; }
+
+  @media (max-width:480px) {
+    header h1 { font-size:0.95rem; }
+    .card-desc { font-size:0.87rem; }
+  }
+
+  /* Password gate overlay */
+  #pwGate {
+    position:fixed; inset:0; background:var(--bg); z-index:1000;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px;
+  }
+  #pwGate.hidden { display:none; }
+  #pwGate .logo { font-size:3rem; margin-bottom:16px; }
+  #pwGate h1 { font-size:1.3rem; color:var(--accent); margin-bottom:6px; }
+  #pwGate p { color:var(--muted); font-size:0.88rem; margin-bottom:24px; text-align:center; }
+  #pwGate input {
+    background: var(--surface); border:1.5px solid var(--border); border-radius:10px;
+    color:var(--text); font-size:1.1rem; padding:12px 16px; font-family:var(--font-main);
+    outline:none; width:100%; max-width:300px; text-align:center; letter-spacing:2px;
+    margin-bottom:12px; direction:ltr;
+  }
+  #pwGate input:focus { border-color:var(--accent); }
+  #pwGate button {
+    background: var(--accent); color:#000; font-weight:700; font-size:1rem;
+    padding:12px 32px; border-radius:10px; border:none; cursor:pointer; font-family:var(--font-main);
+    width:100%; max-width:300px;
+  }
+  #pwGate .err-msg { color:var(--danger); font-size:0.82rem; margin-top:8px; min-height:18px; }
+  #pwGate .readonly-link { margin-top:16px; font-size:0.8rem; color:var(--muted); cursor:pointer; text-decoration:underline; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════════
+     PASSWORD GATE — يتفتح لو الباسورد صح أو read-only
+══════════════════════════════════════════════════════════════ -->
+<div id="pwGate">
+  <div class="logo">📍</div>
+  <h1>الثوابت المساحية</h1>
+  <p>ادخل الباسورد عشان تعدل أو تضيف ثوابت</p>
+  <input type="password" id="pwInput" placeholder="••••••••" maxlength="30"
+         onkeydown="if(event.key==='Enter') tryLogin()">
+  <button onclick="tryLogin()">دخول</button>
+  <div class="err-msg" id="pwErr"></div>
+  <div class="readonly-link" onclick="enterReadOnly()">📖 دخول للعرض فقط (بدون تعديل)</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     MAIN APP
+══════════════════════════════════════════════════════════════ -->
+<div id="app" class="hidden" style="display:none">
+
+<header>
+  <span class="icon">📍</span>
+  <h1>الثوابت المساحية</h1>
+  <span class="count" id="total-count">0</span>
+  <div class="header-right">
+    <span class="sync-status" id="syncStatus">
+      <span class="sync-dot" id="syncDot"></span>
+      <span id="syncText">غير متصل</span>
+    </span>
+    <button class="hbtn" id="adminBtn" onclick="openAdmin()" title="لوحة التحكم">⚙️ أدمن</button>
+    <button class="hbtn primary" onclick="downloadFile()">💾 تنزيل</button>
+    <button class="hbtn" onclick="document.getElementById('fileInput').click()">⬆ استيراد</button>
+    <input type="file" id="fileInput" style="display:none" accept=".html,.json" onchange="importFile(event)">
+  </div>
+</header>
+
+<div class="search-bar">
+  <input type="text" id="search" placeholder="ابحث برقم أو وصف أو احداثي..." oninput="filterPoints()" autocomplete="off">
+  <select id="sortSel" onchange="filterPoints()">
+    <option value="num">رقم</option>
+    <option value="e">E</option>
+    <option value="n">N</option>
+    <option value="desc">وصف</option>
+  </select>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="val" id="shownCount">0</div><div class="lbl">ظاهرين</div></div>
+  <div class="stat"><div class="val" id="totalStat">0</div><div class="lbl">الكل</div></div>
+  <div class="stat"><div class="val" id="eRange">—</div><div class="lbl">نطاق E</div></div>
+  <div class="stat"><div class="val" id="nRange">—</div><div class="lbl">نطاق N</div></div>
+</div>
+
+<div id="list"></div>
+
+<div class="add-section" id="addSection" style="display:none">
+  <button class="add-toggle" onclick="toggleAddForm()">＋ إضافة ثابتة جديدة</button>
+  <div class="add-form" id="addForm">
+    <div class="edit-row"><label>رقم</label><input type="number" id="newNum" min="1"></div>
+    <div class="edit-row"><label>E</label><input type="number" id="newE" step="0.001"></div>
+    <div class="edit-row"><label>N</label><input type="number" id="newN" step="0.001"></div>
+    <div class="edit-row"><label>وصف</label><input type="text" id="newDesc" placeholder="ثابته امام فيلا ..."></div>
+    <div class="edit-btns">
+      <button class="btn btn-cancel" onclick="toggleAddForm()">إلغاء</button>
+      <button class="btn btn-save" onclick="addPoint()">حفظ</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /app -->
+
+<div id="toast"></div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     ADMIN GATE — باسورد الأدمن قبل ما تفتح اللوحة
+══════════════════════════════════════════════════════════════ -->
+<div class="overlay hidden" id="adminGateOverlay">
+  <div class="modal" style="max-width:340px; text-align:center">
+    <h2>🔑 باسورد الأدمن</h2>
+    <p style="font-size:0.82rem; color:var(--muted); margin-bottom:16px">
+      لوحة التحكم محمية بباسورد منفصل
+    </p>
+    <div class="field">
+      <input type="password" id="adminPwInput" placeholder="••••••••"
+             style="text-align:center; letter-spacing:2px; width:100%"
+             onkeydown="if(event.key==='Enter') tryAdminLogin()">
+    </div>
+    <div class="err-msg" id="adminPwErr" style="color:var(--danger); font-size:0.8rem; min-height:18px; margin-bottom:10px"></div>
+    <div class="m-btns" style="justify-content:center; gap:10px">
+      <button class="btn btn-cancel" onclick="closeAdminGate()">إلغاء</button>
+      <button class="btn btn-save" onclick="tryAdminLogin()">دخول</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     ADMIN PANEL MODAL
+══════════════════════════════════════════════════════════════ -->
+<div class="overlay hidden" id="adminOverlay">
+  <div class="modal" style="max-width:440px; max-height:90vh; overflow-y:auto">
+    <h2>⚙️ لوحة التحكم</h2>
+
+    <!-- Section 1: Edit password (for friends) -->
+    <div class="section-title">✏️ باسورد التعديل — للأصحاب</div>
+    <p style="font-size:0.75rem; color:var(--muted); margin-bottom:10px">
+      الباسورد ده بتديه لأصحابك عشان يضيفوا ويعدلوا ثوابت
+    </p>
+    <div class="field">
+      <label>الباسورد الجديد</label>
+      <input type="password" id="adEditNewPw" placeholder="الباسورد الجديد للتعديل">
+    </div>
+    <div class="field">
+      <label>تأكيد</label>
+      <input type="password" id="adEditConfPw" placeholder="كرر الباسورد">
+    </div>
+    <div class="m-btns">
+      <button class="btn btn-save" onclick="changeEditPassword()">💾 تغيير باسورد التعديل</button>
+    </div>
+
+    <hr>
+
+    <!-- Section 2: Admin password (only you) -->
+    <div class="section-title">🛡️ باسورد الأدمن — سري عندك بس</div>
+    <p style="font-size:0.75rem; color:var(--muted); margin-bottom:10px">
+      الباسورد ده بيفتح لوحة التحكم دي — متديهوش لحد
+    </p>
+    <div class="field">
+      <label>الباسورد الحالي</label>
+      <input type="password" id="adAdminCurPw" placeholder="باسورد الأدمن الحالي">
+    </div>
+    <div class="field">
+      <label>الباسورد الجديد</label>
+      <input type="password" id="adAdminNewPw" placeholder="الباسورد الجديد">
+    </div>
+    <div class="field">
+      <label>تأكيد</label>
+      <input type="password" id="adAdminConfPw" placeholder="كرر الباسورد">
+    </div>
+    <div class="m-btns">
+      <button class="btn btn-save" onclick="changeAdminPassword()">🛡️ تغيير باسورد الأدمن</button>
+    </div>
+
+    <hr>
+
+    <!-- Google Sheets -->
+    <div class="section-title">📊 ربط Google Sheets</div>
+    <div class="sheets-box">
+      <div class="hint">
+        ١. افتح Google Sheets جديد<br>
+        ٢. Extensions → Apps Script → الصق الكود من الأسفل واحفظ وانشر كـ Web App<br>
+        ٣. الصق الـ URL هنا
+      </div>
+      <input type="url" id="sheetsUrl" placeholder="https://script.google.com/macros/s/.../exec"
+             style="width:100%; direction:ltr">
+      <div class="m-btns" style="margin-top:8px">
+        <button class="btn btn-cancel" style="font-size:0.8rem" onclick="copyAppsScript()">📋 كود Apps Script</button>
+        <button class="btn btn-save" onclick="saveSheetsUrl()">حفظ الرابط</button>
+      </div>
+    </div>
+
+    <hr>
+
+    <div class="m-note">
+      باسورد التعديل الافتراضي: <b>1234</b><br>
+      باسورد الأدمن الافتراضي: <b>admin123</b>
+    </div>
+    <div class="m-btns" style="margin-top:12px">
+      <button class="btn btn-cancel" onclick="closeAdmin()">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     DATA & SCRIPTS
+══════════════════════════════════════════════════════════════ -->
+<script type="application/json" id="dataStore">[{"num":1,"E":634985.399,"N":3439393.766,"desc":"ثابته ع فيلا روف 121"},{"num":2,"E":635477.555,"N":3439472.964,"desc":"ثابته جمب 251 ع سيخ حديد"},{"num":3,"E":635454.664,"N":3439518.044,"desc":"ثابته امام فيلا 248"},{"num":4,"E":635076.245,"N":3439542.982,"desc":"ثابته ع سقف فيلا 144 روف قديم"},{"num":5,"E":634934.096,"N":3439356.155,"desc":"ثابته ع شوايه خرسانه ورا فيلا 115"},{"num":6,"E":634956.843,"N":3439434.352,"desc":"ثابته ع سيخ حديد جمب فيلا 119"},{"num":7,"E":635071.1,"N":3439228.968,"desc":"ثابته صندوق خرسانه يمين المكاتب s1"},{"num":8,"E":634975.548,"N":3439241.564,"desc":"ثابته سيخ امام فيلا 103.104"},{"num":9,"E":634940.593,"N":3439215.6,"desc":"ثابته سيخ حديد امام فيلا 99.100"},{"num":10,"E":635504.965,"N":3439252.954,"desc":"ثابته سيخ حديد عند فيلا 275"},{"num":11,"E":635561.502,"N":3439172.513,"desc":"ثابته سيخ حديد عند فيلا 301"},{"num":12,"E":635588.781,"N":3439250.043,"desc":"ثابته سيخ حديد عند فيلا 305"},{"num":13,"E":635537.477,"N":3439328.191,"desc":"ثابته ع روف فيلا 271"},{"num":14,"E":635138.148,"N":3439388.866,"desc":"ثابته سيخ حديد امام فيلا 162"},{"num":15,"E":635380.366,"N":3439328.868,"desc":"ثابته سيخ حديد امام فيلا 224"},{"num":16,"E":635418.971,"N":3439298.583,"desc":"ثابته  سيخ حديد امام فيلا 219"},{"num":17,"E":635134.699,"N":3439506.469,"desc":"ثابته ع سقف 149"},{"num":18,"E":635090.733,"N":3439573.59,"desc":"ثابته صندوق خشب امام فيلا 143"},{"num":19,"E":635040.624,"N":3439420.264,"desc":"ثابته ع صندوق خرسانه نقطه جوه الصندوق ورا فيلا 130"},{"num":20,"E":635029.888,"N":3439342.482,"desc":"ثابته ع سقف الدور الثاني فيلا 125"},{"num":21,"E":634593.552,"N":3439519.317,"desc":"ثابته امام فيلا 4 ع شويه خرسانه"},{"num":22,"E":635126.486,"N":3439487.939,"desc":"ثابته ع سقف الدور التاني 148 فوق من بره شويه"},{"num":23,"E":635179.112,"N":3439376.463,"desc":"ثابته ع علبه خرسانه امام فيلا 181"},{"num":24,"E":635097.438,"N":3439329.39,"desc":"ثابته ع راس فيلا 170.169"},{"num":25,"E":635789.752,"N":3439484.138,"desc":"ثابته ع شويه خرسانه اما فيلا 52"},{"num":26,"E":635457.71,"N":3439338.389,"desc":"ثابته صندوق خشب 259 جديد"},{"num":27,"E":634595.458,"N":3439343.233,"desc":"ثابته شوه خرسانه امام فيلا 17"},{"num":28,"E":634652.251,"N":3439276.735,"desc":"ثابته سيخ حديد عند فيلا 24.25"},{"num":29,"E":634689.33,"N":3439283.846,"desc":"ثابته صندوق خرسانه عند فيلا 28"},{"num":30,"E":635150.982,"N":3439440.754,"desc":"ثايته ع روف فيلا 159"},{"num":31,"E":635263.576,"N":3439403.257,"desc":"ثابته صندوق امام فيلا 183.184"},{"num":32,"E":635256.953,"N":3439361.079,"desc":"ثابته سيخ حديد امام فيلا 185"},{"num":33,"E":634929.683,"N":3439414.128,"desc":"ثابته سيخ حديد عند فيلا 118"},{"num":34,"E":634699.513,"N":3439337.366,"desc":"ثابته صندوق خرسانه عند فيلا 36.37"},{"num":35,"E":634623.858,"N":3439572.605,"desc":"ثابته سيخ حديد عند فيلا 1 جديد"},{"num":36,"E":635402.876,"N":3439345.878,"desc":"ثابته سيخ حديد امام فيلا 226"},{"num":37,"E":635429.417,"N":3439339.476,"desc":"ثابته ع سقف الدور الثاني 259"},{"num":38,"E":635346.252,"N":3439401.992,"desc":"ثابته سيخ حديد عند فيلا 230.231"},{"num":39,"E":635030.157,"N":3439258.11,"desc":"ثابته سيخ حديد عند فيلا 107.108"},{"num":40,"E":635142.786,"N":3439458.204,"desc":"ثابته ع عمود 158"},{"num":41,"E":635496.442,"N":3439220.334,"desc":"ثابته صندوق خرسانه 276"},{"num":42,"E":635120.017,"N":3439231.467,"desc":"ثابته صندوق خرسانه شمال المكاتب"},{"num":43,"E":634854.64,"N":3439251.909,"desc":"ثابته عند فيلا 95 من الخلف"},{"num":44,"E":634978.483,"N":3439267.916,"desc":"ثابته عند فيلا 95 من الامام"},{"num":45,"E":634793.482,"N":3439503.845,"desc":"ثابته امام فيلا 63 ع سيخ حديد"},{"num":46,"E":634870.723,"N":3439478.489,"desc":"ثابته ع عمود فيلا 77 رقم 5"},{"num":47,"E":634857.632,"N":3439478.54,"desc":"ثابته ع عمود فيلا 77 رقم 6"},{"num":48,"E":634699.515,"N":3439337.365,"desc":"ثابته ع راس فيلا 28 .29"},{"num":49,"E":634508.583,"N":3439388.708,"desc":"ثابته ع شويه خرسانه امام فيلا 12"},{"num":50,"E":634598.048,"N":3439461.7,"desc":"ثابته امام فيلا 7 عشويه خرسانه من الامام"},{"num":51,"E":634579.724,"N":3439446.978,"desc":"ثابته امام فيلا 8 ع شويه خرسانه"},{"num":52,"E":634562.338,"N":3439433.367,"desc":"ثابته امام فيلا 9 ع شويه خرسانه"},{"num":53,"E":634573.56,"N":3439356.895,"desc":"ثابته امام فيلا 15 ع شويه خرسانه"},{"num":54,"E":634652.245,"N":3439276.734,"desc":"ثابته امام فيلا 25 ع شويه خرسانه"},{"num":55,"E":634561.941,"N":3439459.618,"desc":"ثابته v7b"},{"num":56,"E":635125.622,"N":3439491.955,"desc":"ثابته ع سقف 148 قديم"},{"num":57,"E":635220.679,"N":3439421.489,"desc":"ثابته امام فيلا159 من ورا قديم"},{"num":58,"E":635125.658,"N":3439491.975,"desc":"ثابته ع سقف فيلا 148 جديد"},{"num":59,"E":635220.695,"N":3439421.483,"desc":"ثابته امام فيلا 159 من ورا جديد"},{"num":60,"E":634613.394,"N":3439300.08,"desc":"ثابته امام فيلا 20.21"},{"num":61,"E":634694.457,"N":3439416.744,"desc":"ثابته امام فيلا 47"},{"num":62,"E":635378.489,"N":3439471.271,"desc":"ثابته ع فيلا 243 ع العمود"},{"num":63,"E":635362.836,"N":3439492.389,"desc":"ثابته ع فيلا 241 ع العمود"},{"num":64,"E":635365.288,"N":3439509.186,"desc":"ثابته ع فيلا 240 ع العمود"},{"num":65,"E":634559.242,"N":3439376.324,"desc":"ثابته كتله خرسانه امام فيلا 13"},{"num":66,"E":634997.293,"N":3439358.301,"desc":"ثابته ع سقف فيلا 123 ع الروف"},{"num":67,"E":635162.068,"N":3439295.116,"desc":"ثابته ع سقف الدور الثاني 174"},{"num":68,"E":635370.72,"N":3439462.835,"desc":"ثابته ع روف فيلا 243 شخشيخه"},{"num":69,"E":635443.537,"N":3439408.759,"desc":"ثابته ع جانب فيلا 254 سيخ حديد"},{"num":70,"E":635562.22,"N":3439396.392,"desc":"ثبته سيخ حديد امام فيلا 267"},{"num":71,"E":635053.992,"N":3439485.678,"desc":"ثابته صندوق امام فيلا 134 فوق ع التابه"},{"num":72,"E":634773.661,"N":3439548.413,"desc":"ثابته سيخ حديد عند فيلا 62 ع التابه"},{"num":73,"E":634769.452,"N":3439613.18,"desc":"ثابته عند فيلا 59"},{"num":74,"E":635029.888,"N":3439342.482,"desc":"ثابته ع سقف فيلا 125"},{"num":75,"E":635023.8,"N":3439564.531,"desc":"ثابته ع سيخ حديد امام فيلا 140 تابه"},{"num":76,"E":635058.524,"N":3439537.563,"desc":"ثابته ع روف فيلا 144"},{"num":77,"E":634907.477,"N":3439389.112,"desc":"ثابته سيخ حديد امام فيلا 117"},{"num":78,"E":634953.72,"N":3439386.105,"desc":"ثابته صندوق خرسانه امام فيلا 116"},{"num":79,"E":635138.147,"N":3439388.865,"desc":"سيخ حديد امام فيلا 162"},{"num":80,"E":635143.795,"N":3439404.765,"desc":"ثابته ع شويه خرسانه امام فيلا 161"},{"num":81,"E":634893.932,"N":3439529.685,"desc":"ثابته عند فيلا 73"}]</script>
+
+<script>
+// ════════════════════════════════════════════════════════════════
+//  CONFIG & STATE
+// ════════════════════════════════════════════════════════════════
+const SK_PW       = 'survey_pw_v1';
+const SK_ADMIN_PW = 'survey_admin_pw_v1';
+const SK_DATA     = 'survey_points_v2';
+const SK_SHEET    = 'survey_sheet_url';
+const DEFAULT_PW       = '1234';
+const DEFAULT_ADMIN_PW = 'admin123';
+
+let canEdit = false;     // true only after correct edit password
+let points  = [];
+let syncTimer = null;
+
+// ─── Password helpers ───────────────────────────────────────────
+function getPassword()      { return localStorage.getItem(SK_PW)       || DEFAULT_PW; }
+function setPassword(pw)    { localStorage.setItem(SK_PW, pw); }
+function getAdminPw()       { return localStorage.getItem(SK_ADMIN_PW) || DEFAULT_ADMIN_PW; }
+function setAdminPw(pw)     { localStorage.setItem(SK_ADMIN_PW, pw); }
+
+// ─── Load data ──────────────────────────────────────────────────
+function loadPoints() {
+  const raw = localStorage.getItem(SK_DATA);
+  if (raw) {
+    try {
+      const p = JSON.parse(raw);
+      if (Array.isArray(p) && p.length) return p;
+    } catch(e){}
+  }
+  const el = document.getElementById('dataStore');
+  if (el) {
+    try {
+      const p = JSON.parse(el.textContent);
+      if (Array.isArray(p) && p.length) return p;
+    } catch(e){}
+  }
+  return [];
+}
+
+function savePoints() {
+  localStorage.setItem(SK_DATA, JSON.stringify(points));
+  scheduleSheetsSync();
+}
+
+// ════════════════════════════════════════════════════════════════
+//  GOOGLE SHEETS SYNC
+// ════════════════════════════════════════════════════════════════
+function getSheetsUrl() {
+  return localStorage.getItem(SK_SHEET) || '';
+}
+
+function setSyncStatus(state, text) {
+  const dot  = document.getElementById('syncDot');
+  const txt  = document.getElementById('syncText');
+  if (!dot) return;
+  dot.className = 'sync-dot ' + state;
+  txt.textContent = text;
+}
+
+async function syncToSheets(force) {
+  const url = getSheetsUrl();
+  if (!url) { setSyncStatus('', 'غير متصل'); return; }
+  setSyncStatus('busy', 'جاري الحفظ...');
+  try {
+    await fetch(url, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(points)
+    });
+    setSyncStatus('ok', 'محفوظ في Sheets ✓');
+  } catch(e) {
+    setSyncStatus('err', 'خطأ في الاتصال');
+  }
+}
+
+async function fetchFromSheets() {
+  const url = getSheetsUrl();
+  if (!url) return null;
+  try {
+    const r = await fetch(url + '?action=get', { mode: 'cors' });
+    if (!r.ok) return null;
+    const data = await r.json();
+    if (Array.isArray(data) && data.length) return data;
+  } catch(e){}
+  return null;
+}
+
+function scheduleSheetsSync() {
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(syncToSheets, 1500);
+}
+
+// Poll for remote changes every 30 seconds
+async function pollSheets() {
+  if (!getSheetsUrl() || !document.getElementById('app')) return;
+  const remote = await fetchFromSheets();
+  if (remote) {
+    // Simple merge: if remote has more points or newer total, update
+    if (remote.length !== points.length) {
+      points = remote;
+      localStorage.setItem(SK_DATA, JSON.stringify(points));
+      filterPoints();
+      setSyncStatus('ok', 'تم التحديث من Sheets');
+    }
+  }
+  setTimeout(pollSheets, 30000);
+}
+
+// ════════════════════════════════════════════════════════════════
+//  PASSWORD GATE
+// ════════════════════════════════════════════════════════════════
+function tryLogin() {
+  const input = document.getElementById('pwInput').value;
+  const err   = document.getElementById('pwErr');
+  if (input === getPassword()) {
+    canEdit = true;
+    showApp();
+  } else {
+    err.textContent = '❌ باسورد غلط، حاول تاني';
+    document.getElementById('pwInput').value = '';
+    document.getElementById('pwInput').focus();
+  }
+}
+
+function enterReadOnly() {
+  canEdit = false;
+  showApp();
+}
+
+function showApp() {
+  document.getElementById('pwGate').classList.add('hidden');
+  document.getElementById('pwGate').style.display = 'none';
+  document.getElementById('app').style.display = '';
+
+  // Show/hide edit controls based on permission
+  if (canEdit) {
+    document.getElementById('addSection').style.display = '';
+    document.getElementById('adminBtn').style.display   = '';
+  } else {
+    document.getElementById('addSection').style.display = 'none';
+    document.getElementById('adminBtn').style.display   = 'none';
+  }
+
+  points = loadPoints();
+  filterPoints();
+
+  // Init sheets
+  const url = getSheetsUrl();
+  if (url) {
+    setSyncStatus('ok', 'متصل بـ Sheets');
+    pollSheets();
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+//  ADMIN PANEL
+// ════════════════════════════════════════════════════════════════
+// ─── Admin gate: ask for admin password first ───────────────────
+function openAdmin() {
+  if (!canEdit) return;
+  // Show admin login overlay first
+  document.getElementById('adminPwInput').value = '';
+  document.getElementById('adminPwErr').textContent = '';
+  document.getElementById('adminGateOverlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('adminPwInput').focus(), 100);
+}
+
+function tryAdminLogin() {
+  const val = document.getElementById('adminPwInput').value;
+  if (val === getAdminPw()) {
+    document.getElementById('adminGateOverlay').classList.add('hidden');
+    // Clear all admin fields
+    ['adEditCurPw','adEditNewPw','adEditConfPw',
+     'adAdminCurPw','adAdminNewPw','adAdminConfPw'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    document.getElementById('sheetsUrl').value = getSheetsUrl();
+    document.getElementById('adminOverlay').classList.remove('hidden');
+  } else {
+    document.getElementById('adminPwErr').textContent = '❌ باسورد الأدمن غلط';
+    document.getElementById('adminPwInput').value = '';
+    document.getElementById('adminPwInput').focus();
+  }
+}
+
+function closeAdminGate() {
+  document.getElementById('adminGateOverlay').classList.add('hidden');
+}
+
+function closeAdmin() {
+  document.getElementById('adminOverlay').classList.add('hidden');
+}
+
+// ─── Change EDIT password (for friends) ────────────────────────
+function changeEditPassword() {
+  const nw   = document.getElementById('adEditNewPw').value;
+  const conf = document.getElementById('adEditConfPw').value;
+  if (!nw || nw.length < 3) {
+    toast('❌ الباسورد الجديد قصير جداً (3 حروف على الأقل)', true); return;
+  }
+  if (nw !== conf) {
+    toast('❌ الباسورد والتأكيد مش متطابقين', true); return;
+  }
+  setPassword(nw);
+  toast('✅ تم تغيير باسورد التعديل');
+  document.getElementById('adEditNewPw').value  = '';
+  document.getElementById('adEditConfPw').value = '';
+}
+
+// ─── Change ADMIN password (only you) ──────────────────────────
+function changeAdminPassword() {
+  const cur  = document.getElementById('adAdminCurPw').value;
+  const nw   = document.getElementById('adAdminNewPw').value;
+  const conf = document.getElementById('adAdminConfPw').value;
+  if (cur !== getAdminPw()) {
+    toast('❌ باسورد الأدمن الحالي غلط', true); return;
+  }
+  if (!nw || nw.length < 3) {
+    toast('❌ الباسورد الجديد قصير جداً (3 حروف على الأقل)', true); return;
+  }
+  if (nw !== conf) {
+    toast('❌ الباسورد والتأكيد مش متطابقين', true); return;
+  }
+  setAdminPw(nw);
+  toast('✅ تم تغيير باسورد الأدمن');
+  document.getElementById('adAdminCurPw').value  = '';
+  document.getElementById('adAdminNewPw').value  = '';
+  document.getElementById('adAdminConfPw').value = '';
+}
+
+function saveSheetsUrl() {
+  const url = document.getElementById('sheetsUrl').value.trim();
+  localStorage.setItem(SK_SHEET, url);
+  if (url) {
+    setSyncStatus('busy', 'جاري الاتصال...');
+    syncToSheets(true).then(() => { pollSheets(); });
+    toast('✅ تم حفظ رابط الـ Sheets');
+  } else {
+    setSyncStatus('', 'غير متصل');
+    toast('تم مسح الرابط');
+  }
+}
+
+function copyAppsScript() {
+  const code = `// Google Apps Script — الصق هذا الكود في Apps Script وانشره كـ Web App
+// وادي لكل شخص صلاحية "Anyone" للوصول
+
+function doPost(e) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  const data = JSON.parse(e.postData.contents);
+  sheet.clearContents();
+  sheet.appendRow(['رقم', 'E', 'N', 'وصف', 'آخر تحديث']);
+  data.forEach(p => {
+    sheet.appendRow([p.num, p.E, p.N, p.desc, new Date().toLocaleString('ar')]);
+  });
+  return ContentService.createTextOutput(JSON.stringify({ok:true}))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doGet(e) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  const rows = sheet.getDataRange().getValues();
+  if (rows.length < 2) return ContentService.createTextOutput('[]');
+  const data = rows.slice(1).map(r => ({num:r[0], E:r[1], N:r[2], desc:r[3]}));
+  return ContentService.createTextOutput(JSON.stringify(data))
+    .setMimeType(ContentService.MimeType.JSON);
+}`;
+  navigator.clipboard.writeText(code)
+    .then(() => toast('✅ تم نسخ الكود — الصقه في Apps Script'))
+    .catch(() => toast('❌ مش قدر ينسخ تلقائياً — انسخه يدوياً'));
+}
+
+// ════════════════════════════════════════════════════════════════
+//  RENDER
+// ════════════════════════════════════════════════════════════════
+function extractVilla(desc) {
+  const m = desc.match(/فيلا\s*([\d.]+)/);
+  return m ? m[1] : null;
+}
+
+function hl(text, q) {
+  if (!q) return text;
+  const re = new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + ')', 'gi');
+  return text.replace(re, '<mark style="background:#f0a500;color:#000;border-radius:3px;padding:0 2px">$1</mark>');
+}
+
+function render(filtered) {
+  const q = document.getElementById('search').value.trim();
+  const list = document.getElementById('list');
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="empty"><div class="em-icon">🔍</div>مفيش نتايج للبحث ده</div>`;
+  } else {
+    list.innerHTML = filtered.map(p => {
+      const villa = extractVilla(p.desc);
+      const vtag  = villa ? `<span class="villa-tag">فيلا ${villa}</span>` : '';
+      const editBtns = canEdit ? `
+        <button class="btn-icon edit" onclick="startEdit(event,${p.num})" title="تعديل">✏️</button>
+        <button class="btn-icon del"  onclick="deletePoint(event,${p.num})" title="حذف">🗑️</button>` : '';
+      return `
+      <div class="point-card" id="card-${p.num}">
+        <div class="card-head" onclick="toggleCoords(${p.num})">
+          <div class="card-num">${p.num}</div>
+          <div class="card-desc">${hl(p.desc, q)}${vtag}</div>
+          <div class="card-actions">${editBtns}</div>
+        </div>
+        <div class="card-coords" id="coords-${p.num}" style="display:none">
+          <div class="coord-chip" onclick="copyText('${p.E}')"><span>E</span>${p.E}</div>
+          <div class="coord-chip" onclick="copyText('${p.N}')"><span>N</span>${p.N}</div>
+        </div>
+        ${canEdit ? `<div class="edit-form" id="edit-${p.num}">
+          <div class="edit-row"><label>رقم</label><input id="ef-num-${p.num}" type="number" value="${p.num}" min="1"></div>
+          <div class="edit-row"><label>E</label><input id="ef-e-${p.num}" type="number" value="${p.E}" step="0.001"></div>
+          <div class="edit-row"><label>N</label><input id="ef-n-${p.num}" type="number" value="${p.N}" step="0.001"></div>
+          <div class="edit-row"><label>وصف</label><input id="ef-d-${p.num}" type="text" value="${p.desc.replace(/"/g,'&quot;')}"></div>
+          <div class="edit-btns">
+            <button class="btn btn-cancel" onclick="cancelEdit(${p.num})">إلغاء</button>
+            <button class="btn btn-save" onclick="saveEdit(${p.num})">حفظ</button>
+          </div>
+        </div>` : ''}
+      </div>`;
+    }).join('');
+  }
+
+  // Stats
+  document.getElementById('shownCount').textContent = filtered.length;
+  document.getElementById('total-count').textContent = points.length;
+  document.getElementById('totalStat').textContent = points.length;
+  if (points.length) {
+    const es = points.map(p=>p.E), ns = points.map(p=>p.N);
+    document.getElementById('eRange').textContent =
+      `${Math.min(...es).toFixed(0)}–${Math.max(...es).toFixed(0)}`;
+    document.getElementById('nRange').textContent =
+      `${Math.min(...ns).toFixed(0)}–${Math.max(...ns).toFixed(0)}`;
+  }
+}
+
+function filterPoints() {
+  const q    = document.getElementById('search').value.trim().toLowerCase();
+  const sort = document.getElementById('sortSel').value;
+  let f = points.filter(p =>
+    !q ||
+    p.num.toString().includes(q) ||
+    p.desc.toLowerCase().includes(q) ||
+    p.E.toString().includes(q) ||
+    p.N.toString().includes(q)
+  );
+  f.sort((a,b) => {
+    if (sort==='num')  return a.num - b.num;
+    if (sort==='e')    return a.E - b.E;
+    if (sort==='n')    return a.N - b.N;
+    if (sort==='desc') return a.desc.localeCompare(b.desc,'ar');
+    return 0;
+  });
+  render(f);
+}
+
+// ════════════════════════════════════════════════════════════════
+//  INTERACTIONS
+// ════════════════════════════════════════════════════════════════
+function toggleCoords(num) {
+  const c = document.getElementById(`coords-${num}`);
+  c.style.display = c.style.display === 'none' ? 'flex' : 'none';
+}
+
+function startEdit(e, num) {
+  if (!canEdit) return;
+  e.stopPropagation();
+  document.querySelectorAll('.edit-form').forEach(f => f.classList.remove('open'));
+  document.querySelectorAll('.point-card').forEach(c => c.classList.remove('editing'));
+  document.getElementById(`edit-${num}`).classList.add('open');
+  document.getElementById(`card-${num}`).classList.add('editing');
+  document.getElementById(`edit-${num}`).scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function cancelEdit(num) {
+  document.getElementById(`edit-${num}`).classList.remove('open');
+  document.getElementById(`card-${num}`).classList.remove('editing');
+}
+
+function saveEdit(num) {
+  if (!canEdit) return;
+  const newNum = parseInt(document.getElementById(`ef-num-${num}`).value);
+  const newE   = parseFloat(document.getElementById(`ef-e-${num}`).value);
+  const newN   = parseFloat(document.getElementById(`ef-n-${num}`).value);
+  const newD   = document.getElementById(`ef-d-${num}`).value.trim();
+  if (!newD || isNaN(newE) || isNaN(newN) || isNaN(newNum)) {
+    toast('❌ تأكد من ملء كل الحقول', true); return;
+  }
+  const idx = points.findIndex(p => p.num === num);
+  if (idx >= 0) points[idx] = {num:newNum, E:newE, N:newN, desc:newD};
+  savePoints();
+  filterPoints();
+  toast('✅ تم التعديل');
+}
+
+function deletePoint(e, num) {
+  if (!canEdit) return;
+  e.stopPropagation();
+  if (!confirm(`هتحذف الثابتة رقم ${num}؟`)) return;
+  points = points.filter(p => p.num !== num);
+  savePoints();
+  filterPoints();
+  toast('تم الحذف');
+}
+
+function toggleAddForm() {
+  if (!canEdit) return;
+  const f = document.getElementById('addForm');
+  f.classList.toggle('open');
+  if (f.classList.contains('open')) {
+    const max = points.length ? Math.max(...points.map(p=>p.num)) : 0;
+    document.getElementById('newNum').value = max + 1;
+    document.getElementById('newNum').focus();
+  }
+}
+
+function addPoint() {
+  if (!canEdit) return;
+  const num  = parseInt(document.getElementById('newNum').value);
+  const E    = parseFloat(document.getElementById('newE').value);
+  const N    = parseFloat(document.getElementById('newN').value);
+  const desc = document.getElementById('newDesc').value.trim();
+  if (!desc || isNaN(E) || isNaN(N) || isNaN(num)) {
+    toast('❌ تأكد من ملء كل الحقول', true); return;
+  }
+  if (points.find(p => p.num === num)) {
+    if (!confirm(`الرقم ${num} موجود بالفعل، تضيف رقم تاني؟`)) return;
+  }
+  points.push({num, E, N, desc});
+  points.sort((a,b) => a.num - b.num);
+  savePoints();
+  ['newNum','newE','newN','newDesc'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('addForm').classList.remove('open');
+  filterPoints();
+  toast('✅ تمت الإضافة');
+  setTimeout(() => {
+    const el = document.getElementById(`card-${num}`);
+    if (el) el.scrollIntoView({behavior:'smooth', block:'center'});
+  }, 100);
+}
+
+function copyText(val) {
+  navigator.clipboard.writeText(String(val))
+    .then(() => toast(`نسخت: ${val}`))
+    .catch(() => { /* fallback */ toast(`نسخت: ${val}`); });
+}
+
+// ════════════════════════════════════════════════════════════════
+//  DOWNLOAD / IMPORT
+// ════════════════════════════════════════════════════════════════
+function downloadFile() {
+  const el = document.getElementById('dataStore');
+  el.textContent = JSON.stringify(points);
+  // Close any open UI
+  document.querySelectorAll('.edit-form.open').forEach(f=>f.classList.remove('open'));
+  document.querySelectorAll('.point-card.editing').forEach(c=>c.classList.remove('editing'));
+  document.getElementById('addForm').classList.remove('open');
+  document.getElementById('adminOverlay').classList.add('hidden');
+  // Reset search, capture, restore
+  const s = document.getElementById('search').value;
+  document.getElementById('search').value = '';
+  filterPoints();
+  const html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+  document.getElementById('search').value = s;
+  filterPoints();
+  const blob = new Blob([html], {type:'text/html'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'ثوابت_المساحية.html';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+  toast(`✅ تم تنزيل الملف (${points.length} ثابتة)`);
+}
+
+function importFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      let parsed;
+      const text = e.target.result;
+      if (file.name.endsWith('.json')) {
+        parsed = JSON.parse(text);
+      } else {
+        const m = text.match(/<script type="application\/json" id="dataStore">([\s\S]*?)<\/script>/);
+        if (!m) throw new Error('no data');
+        parsed = JSON.parse(m[1]);
+      }
+      if (!Array.isArray(parsed)) throw new Error('bad format');
+      points = parsed.map(p => ({num:parseInt(p.num),E:parseFloat(p.E),N:parseFloat(p.N),desc:String(p.desc)}));
+      savePoints();
+      filterPoints();
+      toast(`✅ تم استيراد ${points.length} ثابتة`);
+    } catch { toast('❌ ملف غير صالح', true); }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+// ════════════════════════════════════════════════════════════════
+//  TOAST
+// ════════════════════════════════════════════════════════════════
+let toastTimer;
+function toast(msg, isErr) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show' + (isErr ? ' err' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.className = '', 2800);
+}
+
+// ════════════════════════════════════════════════════════════════
+//  INIT — show password gate
+// ════════════════════════════════════════════════════════════════
+// (App starts at password gate; no auto-init needed)
+document.getElementById('pwInput').focus();
+</script>
+</body>
+</html>
