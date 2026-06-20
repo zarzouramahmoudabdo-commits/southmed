@@ -260,6 +260,17 @@
   }
   #pwGate .err-msg { color:var(--danger); font-size:0.82rem; margin-top:8px; min-height:18px; }
   #pwGate .readonly-link { margin-top:16px; font-size:0.8rem; color:var(--muted); cursor:pointer; text-decoration:underline; }
+  #pwGate .sync-msg { color:var(--muted); font-size:0.78rem; margin-bottom:10px; min-height:16px; }
+
+  /* ─── Tabs (الثوابت / المناسيب) ─── */
+  .tab-bar { display:flex; background:var(--surface); border-bottom:1px solid var(--border); }
+  .tab-btn {
+    flex:1; background:none; border:none; color:var(--muted); font-family:var(--font-main);
+    font-size:0.88rem; font-weight:700; padding:11px 6px; cursor:pointer;
+    border-bottom:3px solid transparent; transition:all 0.2s;
+  }
+  .tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+  .tab-btn:hover { color:var(--accent2); }
 </style>
 </head>
 <body>
@@ -273,7 +284,8 @@
   <p>ادخل الباسورد عشان تعدل أو تضيف ثوابت</p>
   <input type="password" id="pwInput" placeholder="••••••••" maxlength="30"
          onkeydown="if(event.key==='Enter') tryLogin()">
-  <button onclick="tryLogin()">دخول</button>
+  <div class="sync-msg" id="pwSyncMsg"></div>
+  <button id="pwLoginBtn" onclick="tryLogin()">دخول</button>
   <div class="err-msg" id="pwErr"></div>
   <div class="readonly-link" onclick="enterReadOnly()">📖 دخول للعرض فقط (بدون تعديل)</div>
 </div>
@@ -299,6 +311,12 @@
   </div>
 </header>
 
+<div class="tab-bar">
+  <button class="tab-btn active" id="tabPointsBtn" onclick="switchTab('points')">📍 الثوابت</button>
+  <button class="tab-btn" id="tabElevBtn" onclick="switchTab('elev')">📏 المناسيب</button>
+</div>
+
+<div id="pointsSection">
 <div class="search-bar">
   <input type="text" id="search" placeholder="ابحث برقم أو وصف أو احداثي..." oninput="filterPoints()" autocomplete="off">
   <select id="sortSel" onchange="filterPoints()">
@@ -331,6 +349,39 @@
     </div>
   </div>
 </div>
+</div><!-- /pointsSection -->
+
+<div id="elevSection" style="display:none">
+  <div class="search-bar">
+    <input type="text" id="searchElev" placeholder="ابحث برقم أو وصف أو منسوب..." oninput="filterElev()" autocomplete="off">
+    <select id="sortSelElev" onchange="filterElev()">
+      <option value="num">رقم</option>
+      <option value="z">Z</option>
+      <option value="desc">وصف</option>
+    </select>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="val" id="shownCountElev">0</div><div class="lbl">ظاهرين</div></div>
+    <div class="stat"><div class="val" id="totalStatElev">0</div><div class="lbl">الكل</div></div>
+    <div class="stat"><div class="val" id="zRange">—</div><div class="lbl">نطاق Z</div></div>
+  </div>
+
+  <div id="listElev"></div>
+
+  <div class="add-section" id="addSectionElev" style="display:none">
+    <button class="add-toggle" onclick="toggleAddFormElev()">＋ إضافة منسوب جديد</button>
+    <div class="add-form" id="addFormElev">
+      <div class="edit-row"><label>رقم</label><input type="number" id="newNumElev" min="1"></div>
+      <div class="edit-row"><label>Z</label><input type="number" id="newZElev" step="0.001"></div>
+      <div class="edit-row"><label>وصف</label><input type="text" id="newDescElev" placeholder="منسوب عند ..."></div>
+      <div class="edit-btns">
+        <button class="btn btn-cancel" onclick="toggleAddFormElev()">إلغاء</button>
+        <button class="btn btn-save" onclick="addElevPoint()">حفظ</button>
+      </div>
+    </div>
+  </div>
+</div><!-- /elevSection -->
 
 </div><!-- /app -->
 
@@ -411,9 +462,9 @@
     <div class="section-title">📊 ربط Google Sheets</div>
     <div class="sheets-box">
       <div class="hint">
-        ١. افتح Google Sheets جديد<br>
-        ٢. Extensions → Apps Script → الصق الكود من الأسفل واحفظ وانشر كـ Web App<br>
-        ٣. الصق الـ URL هنا
+        الرابط الافتراضي متحفوظ في الكود وهيتصل بيه أي حد يفتح الصفحة من غير ما يكتب حاجة.<br>
+        لو غيّرت الـ Apps Script لازم تستخدم الكود الجديد (زرار "كود Apps Script" تحت) — ده بيحفظ <b>الثوابت</b> و<b>المناسيب</b> و<b>الباسوردات</b> كل واحدة في شيت (تبويب) لوحدها في نفس الملف، بحيث الباسورد لما يتغير يتحفظ هنا ويتحدث عند كل اللي بيفتحوا الصفحة من أي متصفح.<br>
+        لو عايز تغيّر الرابط: افتح Google Sheets جديد → Extensions → Apps Script → الصق الكود ده واحفظ وانشر كـ Web App → الصق اللينك تحت.
       </div>
       <input type="url" id="sheetsUrl" placeholder="https://script.google.com/macros/s/.../exec"
              style="width:100%; direction:ltr">
@@ -439,6 +490,7 @@
      DATA & SCRIPTS
 ══════════════════════════════════════════════════════════════ -->
 <script type="application/json" id="dataStore">[{"num":1,"E":634985.399,"N":3439393.766,"desc":"ثابته ع فيلا روف 121"},{"num":2,"E":635477.555,"N":3439472.964,"desc":"ثابته جمب 251 ع سيخ حديد"},{"num":3,"E":635454.664,"N":3439518.044,"desc":"ثابته امام فيلا 248"},{"num":4,"E":635076.245,"N":3439542.982,"desc":"ثابته ع سقف فيلا 144 روف قديم"},{"num":5,"E":634934.096,"N":3439356.155,"desc":"ثابته ع شوايه خرسانه ورا فيلا 115"},{"num":6,"E":634956.843,"N":3439434.352,"desc":"ثابته ع سيخ حديد جمب فيلا 119"},{"num":7,"E":635071.1,"N":3439228.968,"desc":"ثابته صندوق خرسانه يمين المكاتب s1"},{"num":8,"E":634975.548,"N":3439241.564,"desc":"ثابته سيخ امام فيلا 103.104"},{"num":9,"E":634940.593,"N":3439215.6,"desc":"ثابته سيخ حديد امام فيلا 99.100"},{"num":10,"E":635504.965,"N":3439252.954,"desc":"ثابته سيخ حديد عند فيلا 275"},{"num":11,"E":635561.502,"N":3439172.513,"desc":"ثابته سيخ حديد عند فيلا 301"},{"num":12,"E":635588.781,"N":3439250.043,"desc":"ثابته سيخ حديد عند فيلا 305"},{"num":13,"E":635537.477,"N":3439328.191,"desc":"ثابته ع روف فيلا 271"},{"num":14,"E":635138.148,"N":3439388.866,"desc":"ثابته سيخ حديد امام فيلا 162"},{"num":15,"E":635380.366,"N":3439328.868,"desc":"ثابته سيخ حديد امام فيلا 224"},{"num":16,"E":635418.971,"N":3439298.583,"desc":"ثابته  سيخ حديد امام فيلا 219"},{"num":17,"E":635134.699,"N":3439506.469,"desc":"ثابته ع سقف 149"},{"num":18,"E":635090.733,"N":3439573.59,"desc":"ثابته صندوق خشب امام فيلا 143"},{"num":19,"E":635040.624,"N":3439420.264,"desc":"ثابته ع صندوق خرسانه نقطه جوه الصندوق ورا فيلا 130"},{"num":20,"E":635029.888,"N":3439342.482,"desc":"ثابته ع سقف الدور الثاني فيلا 125"},{"num":21,"E":634593.552,"N":3439519.317,"desc":"ثابته امام فيلا 4 ع شويه خرسانه"},{"num":22,"E":635126.486,"N":3439487.939,"desc":"ثابته ع سقف الدور التاني 148 فوق من بره شويه"},{"num":23,"E":635179.112,"N":3439376.463,"desc":"ثابته ع علبه خرسانه امام فيلا 181"},{"num":24,"E":635097.438,"N":3439329.39,"desc":"ثابته ع راس فيلا 170.169"},{"num":25,"E":635789.752,"N":3439484.138,"desc":"ثابته ع شويه خرسانه اما فيلا 52"},{"num":26,"E":635457.71,"N":3439338.389,"desc":"ثابته صندوق خشب 259 جديد"},{"num":27,"E":634595.458,"N":3439343.233,"desc":"ثابته شوه خرسانه امام فيلا 17"},{"num":28,"E":634652.251,"N":3439276.735,"desc":"ثابته سيخ حديد عند فيلا 24.25"},{"num":29,"E":634689.33,"N":3439283.846,"desc":"ثابته صندوق خرسانه عند فيلا 28"},{"num":30,"E":635150.982,"N":3439440.754,"desc":"ثايته ع روف فيلا 159"},{"num":31,"E":635263.576,"N":3439403.257,"desc":"ثابته صندوق امام فيلا 183.184"},{"num":32,"E":635256.953,"N":3439361.079,"desc":"ثابته سيخ حديد امام فيلا 185"},{"num":33,"E":634929.683,"N":3439414.128,"desc":"ثابته سيخ حديد عند فيلا 118"},{"num":34,"E":634699.513,"N":3439337.366,"desc":"ثابته صندوق خرسانه عند فيلا 36.37"},{"num":35,"E":634623.858,"N":3439572.605,"desc":"ثابته سيخ حديد عند فيلا 1 جديد"},{"num":36,"E":635402.876,"N":3439345.878,"desc":"ثابته سيخ حديد امام فيلا 226"},{"num":37,"E":635429.417,"N":3439339.476,"desc":"ثابته ع سقف الدور الثاني 259"},{"num":38,"E":635346.252,"N":3439401.992,"desc":"ثابته سيخ حديد عند فيلا 230.231"},{"num":39,"E":635030.157,"N":3439258.11,"desc":"ثابته سيخ حديد عند فيلا 107.108"},{"num":40,"E":635142.786,"N":3439458.204,"desc":"ثابته ع عمود 158"},{"num":41,"E":635496.442,"N":3439220.334,"desc":"ثابته صندوق خرسانه 276"},{"num":42,"E":635120.017,"N":3439231.467,"desc":"ثابته صندوق خرسانه شمال المكاتب"},{"num":43,"E":634854.64,"N":3439251.909,"desc":"ثابته عند فيلا 95 من الخلف"},{"num":44,"E":634978.483,"N":3439267.916,"desc":"ثابته عند فيلا 95 من الامام"},{"num":45,"E":634793.482,"N":3439503.845,"desc":"ثابته امام فيلا 63 ع سيخ حديد"},{"num":46,"E":634870.723,"N":3439478.489,"desc":"ثابته ع عمود فيلا 77 رقم 5"},{"num":47,"E":634857.632,"N":3439478.54,"desc":"ثابته ع عمود فيلا 77 رقم 6"},{"num":48,"E":634699.515,"N":3439337.365,"desc":"ثابته ع راس فيلا 28 .29"},{"num":49,"E":634508.583,"N":3439388.708,"desc":"ثابته ع شويه خرسانه امام فيلا 12"},{"num":50,"E":634598.048,"N":3439461.7,"desc":"ثابته امام فيلا 7 عشويه خرسانه من الامام"},{"num":51,"E":634579.724,"N":3439446.978,"desc":"ثابته امام فيلا 8 ع شويه خرسانه"},{"num":52,"E":634562.338,"N":3439433.367,"desc":"ثابته امام فيلا 9 ع شويه خرسانه"},{"num":53,"E":634573.56,"N":3439356.895,"desc":"ثابته امام فيلا 15 ع شويه خرسانه"},{"num":54,"E":634652.245,"N":3439276.734,"desc":"ثابته امام فيلا 25 ع شويه خرسانه"},{"num":55,"E":634561.941,"N":3439459.618,"desc":"ثابته v7b"},{"num":56,"E":635125.622,"N":3439491.955,"desc":"ثابته ع سقف 148 قديم"},{"num":57,"E":635220.679,"N":3439421.489,"desc":"ثابته امام فيلا159 من ورا قديم"},{"num":58,"E":635125.658,"N":3439491.975,"desc":"ثابته ع سقف فيلا 148 جديد"},{"num":59,"E":635220.695,"N":3439421.483,"desc":"ثابته امام فيلا 159 من ورا جديد"},{"num":60,"E":634613.394,"N":3439300.08,"desc":"ثابته امام فيلا 20.21"},{"num":61,"E":634694.457,"N":3439416.744,"desc":"ثابته امام فيلا 47"},{"num":62,"E":635378.489,"N":3439471.271,"desc":"ثابته ع فيلا 243 ع العمود"},{"num":63,"E":635362.836,"N":3439492.389,"desc":"ثابته ع فيلا 241 ع العمود"},{"num":64,"E":635365.288,"N":3439509.186,"desc":"ثابته ع فيلا 240 ع العمود"},{"num":65,"E":634559.242,"N":3439376.324,"desc":"ثابته كتله خرسانه امام فيلا 13"},{"num":66,"E":634997.293,"N":3439358.301,"desc":"ثابته ع سقف فيلا 123 ع الروف"},{"num":67,"E":635162.068,"N":3439295.116,"desc":"ثابته ع سقف الدور الثاني 174"},{"num":68,"E":635370.72,"N":3439462.835,"desc":"ثابته ع روف فيلا 243 شخشيخه"},{"num":69,"E":635443.537,"N":3439408.759,"desc":"ثابته ع جانب فيلا 254 سيخ حديد"},{"num":70,"E":635562.22,"N":3439396.392,"desc":"ثبته سيخ حديد امام فيلا 267"},{"num":71,"E":635053.992,"N":3439485.678,"desc":"ثابته صندوق امام فيلا 134 فوق ع التابه"},{"num":72,"E":634773.661,"N":3439548.413,"desc":"ثابته سيخ حديد عند فيلا 62 ع التابه"},{"num":73,"E":634769.452,"N":3439613.18,"desc":"ثابته عند فيلا 59"},{"num":74,"E":635029.888,"N":3439342.482,"desc":"ثابته ع سقف فيلا 125"},{"num":75,"E":635023.8,"N":3439564.531,"desc":"ثابته ع سيخ حديد امام فيلا 140 تابه"},{"num":76,"E":635058.524,"N":3439537.563,"desc":"ثابته ع روف فيلا 144"},{"num":77,"E":634907.477,"N":3439389.112,"desc":"ثابته سيخ حديد امام فيلا 117"},{"num":78,"E":634953.72,"N":3439386.105,"desc":"ثابته صندوق خرسانه امام فيلا 116"},{"num":79,"E":635138.147,"N":3439388.865,"desc":"سيخ حديد امام فيلا 162"},{"num":80,"E":635143.795,"N":3439404.765,"desc":"ثابته ع شويه خرسانه امام فيلا 161"},{"num":81,"E":634893.932,"N":3439529.685,"desc":"ثابته عند فيلا 73"}]</script>
+<script type="application/json" id="dataStoreElev">[{"num":1,"Z":9.51,"desc":"ثابته عند فيلا 259"},{"num":2,"Z":9.948,"desc":"ثابته عند فيلا 276"},{"num":3,"Z":9.443,"desc":"ثابته عند فيلا 289/290"},{"num":4,"Z":12.783,"desc":"ثابته عند فيلا 281/282"},{"num":5,"Z":8.095,"desc":"ثابته عند فيلا 103/104"},{"num":6,"Z":9.34,"desc":"ثابته عند فيلا 219"},{"num":7,"Z":9.777,"desc":"ثابته عند فيلا 301"},{"num":8,"Z":9.003,"desc":"ثابته عند فيلا 182"},{"num":9,"Z":9.006,"desc":"ثابته عند فيلا 130"},{"num":10,"Z":9.813,"desc":"ثابته عند فيلا 117"},{"num":11,"Z":9.70,"desc":"ثابته عند فيلا 109/110"},{"num":12,"Z":9.544,"desc":"ثابته عند فيلا 97/98"},{"num":13,"Z":9.463,"desc":"ثابته عند فيلا 90"},{"num":14,"Z":9.012,"desc":"ثابته عند فيلا 74"},{"num":15,"Z":9.233,"desc":"ثابته عند فيلا 71"},{"num":16,"Z":9.376,"desc":"ثابته عند فيلا 59"},{"num":17,"Z":9.573,"desc":"ثابته عند فيلا 85/86"},{"num":18,"Z":9.328,"desc":"ثابته عند فيلا 20"},{"num":19,"Z":9.446,"desc":"ثابته عند فيلا 7"},{"num":20,"Z":9.263,"desc":"ثابته عند فيلا 218/219"},{"num":21,"Z":9.422,"desc":"ثابته عند فيلا 228/229"},{"num":22,"Z":10.06,"desc":"ثابته عند فيلا 266"}]</script>
 
 <script>
 // ════════════════════════════════════════════════════════════════
@@ -447,13 +499,20 @@
 const SK_PW       = 'survey_pw_v1';
 const SK_ADMIN_PW = 'survey_admin_pw_v1';
 const SK_DATA     = 'survey_points_v2';
+const SK_ELEV     = 'survey_elevations_v1';
 const SK_SHEET    = 'survey_sheet_url';
 const DEFAULT_PW       = '1234';
 const DEFAULT_ADMIN_PW = 'admin123';
+// رابط الـ Google Sheet متحفوظ هنا جوه الكود — كل اللي يفتح الصفحة هيتصل بيه أوتوماتيك
+// من غير ما يحتاج يكتبه في خانة الأدمن
+const DEFAULT_SHEET_URL = 'https://script.google.com/macros/s/AKfycbx9b8t8Y4Pif1Yh9TF1fBEmGC-WLMsG1IkPzzr3nLSP6Nn0orhQATRfS_Jjdz6_AEE1MQ/exec';
 
 let canEdit = false;     // true only after correct edit password
 let points  = [];
+let elevations = [];     // بيانات المناسيب — مستقلة عن الثوابت
+let currentTab = 'points';
 let syncTimer = null;
+let elevSyncTimer = null;
 
 // ─── Password helpers ───────────────────────────────────────────
 function getPassword()      { return localStorage.getItem(SK_PW)       || DEFAULT_PW; }
@@ -486,11 +545,45 @@ function savePoints() {
   scheduleSheetsSync();
 }
 
+// ─── Elevations (المناسيب) — مستقلة بالكامل عن الثوابت ───────────
+function loadElevations() {
+  const raw = localStorage.getItem(SK_ELEV);
+  if (raw) {
+    try {
+      const p = JSON.parse(raw);
+      if (Array.isArray(p)) return p;
+    } catch(e){}
+  }
+  const el = document.getElementById('dataStoreElev');
+  if (el) {
+    try {
+      const p = JSON.parse(el.textContent);
+      if (Array.isArray(p)) return p;
+    } catch(e){}
+  }
+  return [];
+}
+
+function dedupeElevations(arr) {
+  const map = new Map();
+  arr.forEach(p => {
+    const num = parseInt(p.num);
+    map.set(num, { num, Z: parseFloat(p.Z), desc: String(p.desc) });
+  });
+  return Array.from(map.values()).sort((a,b) => a.num - b.num);
+}
+
+function saveElevations() {
+  elevations = dedupeElevations(elevations);
+  localStorage.setItem(SK_ELEV, JSON.stringify(elevations));
+  scheduleElevSync();
+}
+
 // ════════════════════════════════════════════════════════════════
 //  GOOGLE SHEETS SYNC
 // ════════════════════════════════════════════════════════════════
 function getSheetsUrl() {
-  return localStorage.getItem(SK_SHEET) || '';
+  return localStorage.getItem(SK_SHEET) || DEFAULT_SHEET_URL;
 }
 
 function setSyncStatus(state, text) {
@@ -510,7 +603,7 @@ async function syncToSheets(force) {
       method: 'POST',
       mode: 'no-cors',
       headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify(points)
+      body: JSON.stringify({ type: 'points', data: points })
     });
     setSyncStatus('ok', 'محفوظ في Sheets ✓');
   } catch(e) {
@@ -522,7 +615,7 @@ async function fetchFromSheets() {
   const url = getSheetsUrl();
   if (!url) return null;
   try {
-    const r = await fetch(url + '?action=get', { mode: 'cors' });
+    const r = await fetch(url + '?action=get&type=points', { mode: 'cors' });
     if (!r.ok) return null;
     const data = await r.json();
     if (Array.isArray(data) && data.length) return data;
@@ -535,7 +628,74 @@ function scheduleSheetsSync() {
   syncTimer = setTimeout(syncToSheets, 1500);
 }
 
-// Poll for remote changes every 30 seconds
+// ─── Elevations sync (المناسيب) — نفس الفكرة بس type مختلف ───────
+async function syncElevToSheets() {
+  const url = getSheetsUrl();
+  if (!url) return;
+  try {
+    await fetch(url, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ type: 'elevations', data: elevations })
+    });
+  } catch(e){}
+}
+
+async function fetchElevFromSheets() {
+  const url = getSheetsUrl();
+  if (!url) return null;
+  try {
+    const r = await fetch(url + '?action=get&type=elevations', { mode: 'cors' });
+    if (!r.ok) return null;
+    const data = await r.json();
+    if (Array.isArray(data) && data.length) return data;
+  } catch(e){}
+  return null;
+}
+
+function scheduleElevSync() {
+  clearTimeout(elevSyncTimer);
+  elevSyncTimer = setTimeout(syncElevToSheets, 1500);
+}
+
+// ─── Passwords sync (الباسوردات) — تتحفظ في الشيت برضه عشان تتغير
+//     عند كل الناس وعلى أي متصفح من غير ما يحتاجوا يكتبوا حاجة ─────
+async function fetchSettingsFromSheet() {
+  const url = getSheetsUrl();
+  if (!url) return null;
+  try {
+    const r = await fetch(url + '?action=get&type=settings', { mode: 'cors' });
+    if (!r.ok) return null;
+    const data = await r.json();
+    if (data && typeof data === 'object' && !Array.isArray(data)) return data;
+  } catch(e){}
+  return null;
+}
+
+async function pushSettingsToSheet() {
+  const url = getSheetsUrl();
+  if (!url) return;
+  try {
+    await fetch(url, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ type: 'settings', data: { editPw: getPassword(), adminPw: getAdminPw() } })
+    });
+  } catch(e){}
+}
+
+async function syncPasswordsFromSheet() {
+  const remote = await fetchSettingsFromSheet();
+  if (remote) {
+    if (remote.editPw)  localStorage.setItem(SK_PW, remote.editPw);
+    if (remote.adminPw) localStorage.setItem(SK_ADMIN_PW, remote.adminPw);
+  }
+  return remote;
+}
+
+// Poll for remote changes every 30 seconds (ثوابت + مناسيب + باسوردات)
 async function pollSheets() {
   if (!getSheetsUrl() || !document.getElementById('app')) return;
   const remote = await fetchFromSheets();
@@ -546,10 +706,20 @@ async function pollSheets() {
     if (changed) {
       points = cleaned;
       localStorage.setItem(SK_DATA, JSON.stringify(points));
-      filterPoints();
+      if (currentTab === 'points') filterPoints();
       setSyncStatus('ok', 'تم التحديث من Sheets');
     }
   }
+  const remoteElev = await fetchElevFromSheets();
+  if (remoteElev) {
+    const cleanedE = dedupeElevations(remoteElev);
+    if (JSON.stringify(cleanedE) !== JSON.stringify(elevations)) {
+      elevations = cleanedE;
+      localStorage.setItem(SK_ELEV, JSON.stringify(elevations));
+      if (currentTab === 'elev') filterElev();
+    }
+  }
+  await syncPasswordsFromSheet();
   setTimeout(pollSheets, 30000);
 }
 
@@ -574,6 +744,14 @@ function enterReadOnly() {
   showApp();
 }
 
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('tabPointsBtn').classList.toggle('active', tab === 'points');
+  document.getElementById('tabElevBtn').classList.toggle('active', tab === 'elev');
+  document.getElementById('pointsSection').style.display = tab === 'points' ? '' : 'none';
+  document.getElementById('elevSection').style.display   = tab === 'elev'   ? '' : 'none';
+}
+
 async function showApp() {
   document.getElementById('pwGate').classList.add('hidden');
   document.getElementById('pwGate').style.display = 'none';
@@ -581,16 +759,20 @@ async function showApp() {
 
   // Show/hide edit controls based on permission
   if (canEdit) {
-    document.getElementById('addSection').style.display = '';
-    document.getElementById('adminBtn').style.display   = '';
+    document.getElementById('addSection').style.display     = '';
+    document.getElementById('addSectionElev').style.display  = '';
+    document.getElementById('adminBtn').style.display        = '';
   } else {
-    document.getElementById('addSection').style.display = 'none';
-    document.getElementById('adminBtn').style.display   = 'none';
+    document.getElementById('addSection').style.display      = 'none';
+    document.getElementById('addSectionElev').style.display  = 'none';
+    document.getElementById('adminBtn').style.display        = 'none';
   }
 
-  // Load local copy first so something shows immediately
-  points = loadPoints();
+  // Load local copies first so something shows immediately
+  points     = loadPoints();
+  elevations = loadElevations();
   filterPoints();
+  filterElev();
 
   // If Sheets is connected, it is the single source of truth —
   // always pull the freshest copy on open instead of trusting local cache.
@@ -603,8 +785,20 @@ async function showApp() {
       localStorage.setItem(SK_DATA, JSON.stringify(points));
       filterPoints();
       setSyncStatus('ok', 'متصل بـ Sheets');
+    } else if (canEdit && points.length) {
+      // الشيت فاضي (تبويب جديد) — ابعت نسختنا المحلية لتعبيته أوتوماتيك
+      syncToSheets();
     } else {
       setSyncStatus('err', 'فشل التحميل من Sheets — بيانات محلية');
+    }
+    const remoteElev = await fetchElevFromSheets();
+    if (remoteElev) {
+      elevations = dedupeElevations(remoteElev);
+      localStorage.setItem(SK_ELEV, JSON.stringify(elevations));
+      filterElev();
+    } else if (canEdit && elevations.length) {
+      // نفس الفكرة لتبويب المناسيب
+      syncElevToSheets();
     }
     pollSheets();
   }
@@ -671,6 +865,7 @@ function changeEditPassword() {
     toast('❌ الباسورد والتأكيد مش متطابقين', true); return;
   }
   setPassword(nw);
+  pushSettingsToSheet();
   toast('✅ تم تغيير باسورد التعديل');
   document.getElementById('adEditNewPw').value  = '';
   document.getElementById('adEditConfPw').value = '';
@@ -691,6 +886,7 @@ function changeAdminPassword() {
     toast('❌ الباسورد والتأكيد مش متطابقين', true); return;
   }
   setAdminPw(nw);
+  pushSettingsToSheet();
   toast('✅ تم تغيير باسورد الأدمن');
   document.getElementById('adAdminCurPw').value  = '';
   document.getElementById('adAdminNewPw').value  = '';
@@ -713,36 +909,91 @@ function saveSheetsUrl() {
 function copyAppsScript() {
   const code = "// Google Apps Script \u2014 \u0627\u0644\u0635\u0642 \u0647\u0630\u0627 \u0627\u0644\u0643\u0648\u062f \u0641\u064a Apps Script \u0648\u0627\u0646\u0634\u0631\u0647 \u0643\u0640 Web App\n" +
 "// \u0648\u0627\u062f\u064a \u0644\u0643\u0644 \u0634\u062e\u0635 \u0635\u0644\u0627\u062d\u064a\u0629 \"Anyone\" \u0644\u0644\u0648\u0635\u0648\u0644\n" +
+"// \u0628\u064a\u062f\u0639\u0645 3 \u0623\u0646\u0648\u0627\u0639 \u0628\u064a\u0627\u0646\u0627\u062a \u0641\u064a \u0648\u0631\u0642\u0627\u062a \u0645\u0646\u0641\u0635\u0644\u0629 \u0628\u0646\u0641\u0633 \u0627\u0644\u0634\u064a\u062a:\n" +
+"// \u0627\u0644\u062b\u0648\u0627\u0628\u062a \u0648\u0627\u0644\u0645\u0646\u0627\u0633\u064a\u0628 \u0648\u0627\u0644\u0628\u0627\u0633\u0648\u0631\u062f\u0627\u062a\n" +
+"\n" +
+"function getSheet_(name, headers) {\n" +
+"  var ss = SpreadsheetApp.getActiveSpreadsheet();\n" +
+"  var sheet = ss.getSheetByName(name);\n" +
+"  if (!sheet) {\n" +
+"    sheet = ss.insertSheet(name);\n" +
+"    sheet.appendRow(headers);\n" +
+"  }\n" +
+"  return sheet;\n" +
+"}\n" +
 "\n" +
 "function doPost(e) {\n" +
-"  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();\n" +
-"  var data = JSON.parse(e.postData.contents);\n" +
-"  sheet.clearContents();\n" +
-"  sheet.appendRow(['\u0631\u0642\u0645', 'E', 'N', '\u0648\u0635\u0641', '\u0622\u062e\u0631 \u062a\u062d\u062f\u064a\u062b']);\n" +
-"  for (var i = 0; i < data.length; i++) {\n" +
-"    var p = data[i];\n" +
-"    sheet.appendRow([p.num, p.E, p.N, p.desc, new Date().toLocaleString('ar')]);\n" +
+"  var body = JSON.parse(e.postData.contents);\n" +
+"  var type = body.type || 'points';\n" +
+"  var data = body.data;\n" +
+"\n" +
+"  if (type === 'points') {\n" +
+"    var sheet = getSheet_('\u0627\u0644\u062b\u0648\u0627\u0628\u062a', ['\u0631\u0642\u0645','E','N','\u0648\u0635\u0641','\u0622\u062e\u0631 \u062a\u062d\u062f\u064a\u062b']);\n" +
+"    sheet.clearContents();\n" +
+"    sheet.appendRow(['\u0631\u0642\u0645','E','N','\u0648\u0635\u0641','\u0622\u062e\u0631 \u062a\u062d\u062f\u064a\u062b']);\n" +
+"    for (var i = 0; i < data.length; i++) {\n" +
+"      var p = data[i];\n" +
+"      sheet.appendRow([p.num, p.E, p.N, p.desc, new Date().toLocaleString('ar-EG')]);\n" +
+"    }\n" +
+"  } else if (type === 'elevations') {\n" +
+"    var sheetE = getSheet_('\u0627\u0644\u0645\u0646\u0627\u0633\u064a\u0628', ['\u0631\u0642\u0645','Z','\u0648\u0635\u0641','\u0622\u062e\u0631 \u062a\u062d\u062f\u064a\u062b']);\n" +
+"    sheetE.clearContents();\n" +
+"    sheetE.appendRow(['\u0631\u0642\u0645','Z','\u0648\u0635\u0641','\u0622\u062e\u0631 \u062a\u062d\u062f\u064a\u062b']);\n" +
+"    for (var j = 0; j < data.length; j++) {\n" +
+"      var pe = data[j];\n" +
+"      sheetE.appendRow([pe.num, pe.Z, pe.desc, new Date().toLocaleString('ar-EG')]);\n" +
+"    }\n" +
+"  } else if (type === 'settings') {\n" +
+"    var sheetS = getSheet_('\u0627\u0644\u0625\u0639\u062f\u0627\u062f\u0627\u062a', ['\u0627\u0644\u0645\u0641\u062a\u0627\u062d','\u0627\u0644\u0642\u064a\u0645\u0629']);\n" +
+"    sheetS.clearContents();\n" +
+"    sheetS.appendRow(['\u0627\u0644\u0645\u0641\u062a\u0627\u062d','\u0627\u0644\u0642\u064a\u0645\u0629']);\n" +
+"    sheetS.appendRow(['editPw', data.editPw || '']);\n" +
+"    sheetS.appendRow(['adminPw', data.adminPw || '']);\n" +
 "  }\n" +
 "  return ContentService.createTextOutput(JSON.stringify({ok:true}))\n" +
 "    .setMimeType(ContentService.MimeType.JSON);\n" +
 "}\n" +
 "\n" +
 "function doGet(e) {\n" +
-"  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();\n" +
-"  var rows = sheet.getDataRange().getValues();\n" +
-"  if (rows.length < 2) {\n" +
-"    return ContentService.createTextOutput('[]').setMimeType(ContentService.MimeType.JSON);\n" +
+"  var type = (e.parameter && e.parameter.type) || 'points';\n" +
+"\n" +
+"  if (type === 'points') {\n" +
+"    var sheet = getSheet_('\u0627\u0644\u062b\u0648\u0627\u0628\u062a', ['\u0631\u0642\u0645','E','N','\u0648\u0635\u0641','\u0622\u062e\u0631 \u062a\u062d\u062f\u064a\u062b']);\n" +
+"    var rows = sheet.getDataRange().getValues();\n" +
+"    var out = [];\n" +
+"    for (var i = 1; i < rows.length; i++) {\n" +
+"      var r = rows[i];\n" +
+"      if (r[0] === '' || r[0] === null) continue;\n" +
+"      out.push({num: r[0], E: r[1], N: r[2], desc: r[3]});\n" +
+"    }\n" +
+"    return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);\n" +
+"\n" +
+"  } else if (type === 'elevations') {\n" +
+"    var sheetE = getSheet_('\u0627\u0644\u0645\u0646\u0627\u0633\u064a\u0628', ['\u0631\u0642\u0645','Z','\u0648\u0635\u0641','\u0622\u062e\u0631 \u062a\u062d\u062f\u064a\u062b']);\n" +
+"    var rowsE = sheetE.getDataRange().getValues();\n" +
+"    var outE = [];\n" +
+"    for (var j = 1; j < rowsE.length; j++) {\n" +
+"      var re = rowsE[j];\n" +
+"      if (re[0] === '' || re[0] === null) continue;\n" +
+"      outE.push({num: re[0], Z: re[1], desc: re[2]});\n" +
+"    }\n" +
+"    return ContentService.createTextOutput(JSON.stringify(outE)).setMimeType(ContentService.MimeType.JSON);\n" +
+"\n" +
+"  } else if (type === 'settings') {\n" +
+"    var sheetS = getSheet_('\u0627\u0644\u0625\u0639\u062f\u0627\u062f\u0627\u062a', ['\u0627\u0644\u0645\u0641\u062a\u0627\u062d','\u0627\u0644\u0642\u064a\u0645\u0629']);\n" +
+"    var rowsS = sheetS.getDataRange().getValues();\n" +
+"    var out2 = {};\n" +
+"    for (var k = 1; k < rowsS.length; k++) {\n" +
+"      var rs = rowsS[k];\n" +
+"      if (rs[0]) out2[rs[0]] = rs[1];\n" +
+"    }\n" +
+"    return ContentService.createTextOutput(JSON.stringify(out2)).setMimeType(ContentService.MimeType.JSON);\n" +
 "  }\n" +
-"  var data = [];\n" +
-"  for (var i = 1; i < rows.length; i++) {\n" +
-"    var r = rows[i];\n" +
-"    data.push({num: r[0], E: r[1], N: r[2], desc: r[3]});\n" +
-"  }\n" +
-"  return ContentService.createTextOutput(JSON.stringify(data))\n" +
-"    .setMimeType(ContentService.MimeType.JSON);\n" +
+"\n" +
+"  return ContentService.createTextOutput('[]').setMimeType(ContentService.MimeType.JSON);\n" +
 "}";
   navigator.clipboard.writeText(code)
-    .then(() => toast('✅ تم نسخ الكود — الصقه في Apps Script'))
+    .then(() => toast('✅ تم نسخ الكود — الصقه في Apps Script وافتح Deploy → Manage Deployments → Edit → New version'))
     .catch(() => {
       // Fallback: show code in a prompt-like manner for manual copy
       const ta = document.createElement('textarea');
@@ -842,11 +1093,80 @@ function filterPoints() {
   render(f);
 }
 
+// ─── المناسيب (Z) — render/filter مستقلين تماماً عن الثوابت ──────
+function renderElev(filtered) {
+  const q = document.getElementById('searchElev').value.trim();
+  const list = document.getElementById('listElev');
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="empty"><div class="em-icon">📏</div>مفيش مناسيب للبحث ده</div>`;
+  } else {
+    list.innerHTML = filtered.map(p => {
+      const editBtns = canEdit ? `
+        <button class="btn-icon edit" onclick="startEditElev(event,${p.num})" title="تعديل">✏️</button>
+        <button class="btn-icon del"  onclick="deleteElevPoint(event,${p.num})" title="حذف">🗑️</button>` : '';
+      return `
+      <div class="point-card" id="cardElev-${p.num}">
+        <div class="card-head" onclick="toggleZ(${p.num})">
+          <div class="card-num">${p.num}</div>
+          <div class="card-desc">${hl(p.desc, q)}</div>
+          <div class="card-actions">${editBtns}</div>
+        </div>
+        <div class="card-coords" id="zChip-${p.num}" style="display:none">
+          <div class="coord-chip" onclick="copyText('${p.Z}')"><span>Z</span>${p.Z}</div>
+        </div>
+        ${canEdit ? `<div class="edit-form" id="editElev-${p.num}">
+          <div class="edit-row"><label>رقم</label><input id="efe-num-${p.num}" type="number" value="${p.num}" min="1"></div>
+          <div class="edit-row"><label>Z</label><input id="efe-z-${p.num}" type="number" value="${p.Z}" step="0.001"></div>
+          <div class="edit-row"><label>وصف</label><input id="efe-d-${p.num}" type="text" value="${p.desc.replace(/"/g,'&quot;')}"></div>
+          <div class="edit-btns">
+            <button class="btn btn-cancel" onclick="cancelEditElev(${p.num})">إلغاء</button>
+            <button class="btn btn-save" onclick="saveEditElev(${p.num})">حفظ</button>
+          </div>
+        </div>` : ''}
+      </div>`;
+    }).join('');
+  }
+
+  document.getElementById('shownCountElev').textContent = filtered.length;
+  document.getElementById('totalStatElev').textContent = elevations.length;
+  if (elevations.length) {
+    const zs = elevations.map(p=>p.Z);
+    document.getElementById('zRange').textContent =
+      `${Math.min(...zs).toFixed(2)}–${Math.max(...zs).toFixed(2)}`;
+  } else {
+    document.getElementById('zRange').textContent = '—';
+  }
+}
+
+function filterElev() {
+  const q    = document.getElementById('searchElev').value.trim().toLowerCase();
+  const sort = document.getElementById('sortSelElev').value;
+  let f = elevations.filter(p =>
+    !q ||
+    p.num.toString().includes(q) ||
+    p.desc.toLowerCase().includes(q) ||
+    p.Z.toString().includes(q)
+  );
+  f.sort((a,b) => {
+    if (sort==='num')  return a.num - b.num;
+    if (sort==='z')     return a.Z - b.Z;
+    if (sort==='desc') return a.desc.localeCompare(b.desc,'ar');
+    return 0;
+  });
+  renderElev(f);
+}
+
 // ════════════════════════════════════════════════════════════════
 //  INTERACTIONS
 // ════════════════════════════════════════════════════════════════
 function toggleCoords(num) {
   const c = document.getElementById(`coords-${num}`);
+  c.style.display = c.style.display === 'none' ? 'flex' : 'none';
+}
+
+function toggleZ(num) {
+  const c = document.getElementById(`zChip-${num}`);
   c.style.display = c.style.display === 'none' ? 'flex' : 'none';
 }
 
@@ -891,6 +1211,47 @@ function deletePoint(e, num) {
   toast('تم الحذف');
 }
 
+// ─── المناسيب — تعديل وحذف ────────────────────────────────────────
+function startEditElev(e, num) {
+  if (!canEdit) return;
+  e.stopPropagation();
+  document.querySelectorAll('#listElev .edit-form').forEach(f => f.classList.remove('open'));
+  document.querySelectorAll('#listElev .point-card').forEach(c => c.classList.remove('editing'));
+  document.getElementById(`editElev-${num}`).classList.add('open');
+  document.getElementById(`cardElev-${num}`).classList.add('editing');
+  document.getElementById(`editElev-${num}`).scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function cancelEditElev(num) {
+  document.getElementById(`editElev-${num}`).classList.remove('open');
+  document.getElementById(`cardElev-${num}`).classList.remove('editing');
+}
+
+function saveEditElev(num) {
+  if (!canEdit) return;
+  const newNum = parseInt(document.getElementById(`efe-num-${num}`).value);
+  const newZ   = parseFloat(document.getElementById(`efe-z-${num}`).value);
+  const newD   = document.getElementById(`efe-d-${num}`).value.trim();
+  if (!newD || isNaN(newZ) || isNaN(newNum)) {
+    toast('❌ تأكد من ملء كل الحقول', true); return;
+  }
+  const idx = elevations.findIndex(p => p.num === num);
+  if (idx >= 0) elevations[idx] = {num:newNum, Z:newZ, desc:newD};
+  saveElevations();
+  filterElev();
+  toast('✅ تم التعديل');
+}
+
+function deleteElevPoint(e, num) {
+  if (!canEdit) return;
+  e.stopPropagation();
+  if (!confirm(`هتحذف المنسوب رقم ${num}؟`)) return;
+  elevations = elevations.filter(p => p.num !== num);
+  saveElevations();
+  filterElev();
+  toast('تم الحذف');
+}
+
 function toggleAddForm() {
   if (!canEdit) return;
   const f = document.getElementById('addForm');
@@ -927,6 +1288,42 @@ function addPoint() {
   }, 100);
 }
 
+// ─── المناسيب — إضافة ─────────────────────────────────────────────
+function toggleAddFormElev() {
+  if (!canEdit) return;
+  const f = document.getElementById('addFormElev');
+  f.classList.toggle('open');
+  if (f.classList.contains('open')) {
+    const max = elevations.length ? Math.max(...elevations.map(p=>p.num)) : 0;
+    document.getElementById('newNumElev').value = max + 1;
+    document.getElementById('newNumElev').focus();
+  }
+}
+
+function addElevPoint() {
+  if (!canEdit) return;
+  const num  = parseInt(document.getElementById('newNumElev').value);
+  const Z    = parseFloat(document.getElementById('newZElev').value);
+  const desc = document.getElementById('newDescElev').value.trim();
+  if (!desc || isNaN(Z) || isNaN(num)) {
+    toast('❌ تأكد من ملء كل الحقول', true); return;
+  }
+  if (elevations.find(p => p.num === num)) {
+    if (!confirm(`الرقم ${num} موجود بالفعل، تضيف رقم تاني؟`)) return;
+  }
+  elevations.push({num, Z, desc});
+  elevations.sort((a,b) => a.num - b.num);
+  saveElevations();
+  ['newNumElev','newZElev','newDescElev'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('addFormElev').classList.remove('open');
+  filterElev();
+  toast('✅ تمت الإضافة');
+  setTimeout(() => {
+    const el = document.getElementById(`cardElev-${num}`);
+    if (el) el.scrollIntoView({behavior:'smooth', block:'center'});
+  }, 100);
+}
+
 function copyText(val) {
   navigator.clipboard.writeText(String(val))
     .then(() => toast(`نسخت: ${val}`))
@@ -939,25 +1336,33 @@ function copyText(val) {
 function downloadFile() {
   const el = document.getElementById('dataStore');
   el.textContent = JSON.stringify(points);
+  const elE = document.getElementById('dataStoreElev');
+  if (elE) elE.textContent = JSON.stringify(elevations);
   // Close any open UI
   document.querySelectorAll('.edit-form.open').forEach(f=>f.classList.remove('open'));
   document.querySelectorAll('.point-card.editing').forEach(c=>c.classList.remove('editing'));
   document.getElementById('addForm').classList.remove('open');
+  document.getElementById('addFormElev').classList.remove('open');
   document.getElementById('adminOverlay').classList.add('hidden');
   // Reset search, capture, restore
-  const s = document.getElementById('search').value;
+  const s  = document.getElementById('search').value;
+  const s2 = document.getElementById('searchElev').value;
   document.getElementById('search').value = '';
+  document.getElementById('searchElev').value = '';
   filterPoints();
+  filterElev();
   const html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
   document.getElementById('search').value = s;
+  document.getElementById('searchElev').value = s2;
   filterPoints();
+  filterElev();
   const blob = new Blob([html], {type:'text/html'});
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href = url; a.download = 'ثوابت_المساحية.html';
   document.body.appendChild(a); a.click();
   document.body.removeChild(a); URL.revokeObjectURL(url);
-  toast(`✅ تم تنزيل الملف (${points.length} ثابتة)`);
+  toast(`✅ تم تنزيل الملف (${points.length} ثابتة، ${elevations.length} منسوب)`);
 }
 
 function importFile(event) {
@@ -966,7 +1371,7 @@ function importFile(event) {
   const reader = new FileReader();
   reader.onload = e => {
     try {
-      let parsed;
+      let parsed, parsedElev = null;
       const text = e.target.result;
       if (file.name.endsWith('.json')) {
         parsed = JSON.parse(text);
@@ -974,12 +1379,23 @@ function importFile(event) {
         const m = text.match(/<script type="application\/json" id="dataStore">([\s\S]*?)<\/script>/);
         if (!m) throw new Error('no data');
         parsed = JSON.parse(m[1]);
+        const mE = text.match(/<script type="application\/json" id="dataStoreElev">([\s\S]*?)<\/script>/);
+        if (mE) {
+          try { parsedElev = JSON.parse(mE[1]); } catch(e2) { parsedElev = null; }
+        }
       }
       if (!Array.isArray(parsed)) throw new Error('bad format');
       points = parsed.map(p => ({num:parseInt(p.num),E:parseFloat(p.E),N:parseFloat(p.N),desc:String(p.desc)}));
       savePoints();
       filterPoints();
-      toast(`✅ تم استيراد ${points.length} ثابتة`);
+      let msg = `✅ تم استيراد ${points.length} ثابتة`;
+      if (Array.isArray(parsedElev)) {
+        elevations = parsedElev.map(p => ({num:parseInt(p.num),Z:parseFloat(p.Z),desc:String(p.desc)}));
+        saveElevations();
+        filterElev();
+        msg += ` و ${elevations.length} منسوب`;
+      }
+      toast(msg);
     } catch { toast('❌ ملف غير صالح', true); }
   };
   reader.readAsText(file);
@@ -999,10 +1415,18 @@ function toast(msg, isErr) {
 }
 
 // ════════════════════════════════════════════════════════════════
-//  INIT — show password gate
+//  INIT — show password gate, then sync latest password from Sheets
 // ════════════════════════════════════════════════════════════════
-// (App starts at password gate; no auto-init needed)
-document.getElementById('pwInput').focus();
+(async function initGate() {
+  const msg = document.getElementById('pwSyncMsg');
+  const btn = document.getElementById('pwLoginBtn');
+  if (msg) msg.textContent = 'جاري التحقق من آخر باسورد...';
+  if (btn) btn.disabled = true;
+  try { await syncPasswordsFromSheet(); } catch(e) {}
+  if (msg) msg.textContent = '';
+  if (btn) btn.disabled = false;
+  document.getElementById('pwInput').focus();
+})();
 </script>
 </body>
 </html>
